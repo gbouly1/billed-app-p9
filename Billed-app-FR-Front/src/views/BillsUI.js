@@ -23,6 +23,7 @@ const row = (bill) => {
 //   return data && data.length ? data.map((bill) => row(bill)).join("") : "";
 // };
 
+//Correction bug des bills par date
 const rows = (data) => {
   // Trier les factures du plus récent au plus ancien
   const sortedData =

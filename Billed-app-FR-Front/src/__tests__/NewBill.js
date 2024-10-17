@@ -11,6 +11,7 @@ import router from "../app/Router.js";
 import { ROUTES_PATH } from "../constants/routes.js";
 
 jest.mock("../app/store", () => mockStore);
+jest.spyOn(window, "alert").mockImplementation(() => {}); // Mock alert
 
 describe("Given I am connected as an employee", () => {
   beforeEach(() => {
@@ -176,6 +177,42 @@ describe("Given I am connected as an employee", () => {
       expect(handleChangeFile).toHaveBeenCalled();
       await waitFor(() => expect(store.bills().create).toHaveBeenCalled());
       expect(console.error).toHaveBeenCalledWith(new Error("Erreur API"));
+    });
+  });
+
+  // Ntest error lors de bill update
+  describe("When an error occurs during bill update", () => {
+    test("Then the console.error should be called", async () => {
+      const html = NewBillUI();
+      document.body.innerHTML = html;
+
+      const onNavigate = jest.fn();
+      const store = {
+        bills: jest.fn(() => ({
+          update: jest
+            .fn()
+            .mockRejectedValueOnce(new Error("Erreur de mise à jour")),
+        })),
+      };
+
+      const newBill = new NewBill({
+        document,
+        onNavigate,
+        store,
+        localStorage: window.localStorage,
+      });
+
+      const handleSubmit = jest.spyOn(newBill, "handleSubmit");
+      const form = screen.getByTestId("form-new-bill");
+
+      form.addEventListener("submit", handleSubmit);
+
+      fireEvent.submit(form);
+
+      await waitFor(() => expect(store.bills().update).toHaveBeenCalled());
+      expect(console.error).toHaveBeenCalledWith(
+        new Error("Erreur de mise à jour")
+      );
     });
   });
 });

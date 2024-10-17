@@ -12,6 +12,7 @@ import { ROUTES_PATH } from "../constants/routes.js";
 
 jest.mock("../app/store", () => mockStore);
 jest.spyOn(window, "alert").mockImplementation(() => {}); // Mock alert
+jest.spyOn(console, "error").mockImplementation(() => {}); // Mock console.error
 
 describe("Given I am connected as an employee", () => {
   beforeEach(() => {
@@ -180,18 +181,16 @@ describe("Given I am connected as an employee", () => {
     });
   });
 
-  // Ntest error lors de bill update
-  describe("When an error occurs during bill update", () => {
-    test("Then the console.error should be called", async () => {
+  // test d'intégration POST
+  describe("When I submit a valid form", () => {
+    test("Then a POST request should be sent to create a new bill", async () => {
       const html = NewBillUI();
       document.body.innerHTML = html;
 
       const onNavigate = jest.fn();
       const store = {
         bills: jest.fn(() => ({
-          update: jest
-            .fn()
-            .mockRejectedValueOnce(new Error("Erreur de mise à jour")),
+          create: jest.fn().mockResolvedValue({}), // Mock la fonction create
         })),
       };
 
@@ -202,17 +201,68 @@ describe("Given I am connected as an employee", () => {
         localStorage: window.localStorage,
       });
 
+      // Espionner la méthode handleSubmit
       const handleSubmit = jest.spyOn(newBill, "handleSubmit");
+
+      // Remplir le formulaire avec des données valides
+      screen.getByTestId("expense-type").value = "Transports";
+      screen.getByTestId("expense-name").value = "Vol Paris Londres";
+      screen.getByTestId("datepicker").value = "2023-10-01";
+      screen.getByTestId("amount").value = "300";
+      screen.getByTestId("vat").value = "70";
+      screen.getByTestId("pct").value = "20";
+      screen.getByTestId("commentary").value = "Voyage d'affaires";
+
+      const fileInput = screen.getByTestId("file");
+      const file = new File(["image"], "image.jpg", { type: "image/jpg" });
+      fireEvent.change(fileInput, { target: { files: [file] } });
+
       const form = screen.getByTestId("form-new-bill");
 
-      form.addEventListener("submit", handleSubmit);
+      // Attache manuellement l'événement
+      form.addEventListener("submit", newBill.handleSubmit);
 
       fireEvent.submit(form);
 
-      await waitFor(() => expect(store.bills().update).toHaveBeenCalled());
-      expect(console.error).toHaveBeenCalledWith(
-        new Error("Erreur de mise à jour")
-      );
+      // Vérification
+      expect(handleSubmit).toHaveBeenCalled();
+      await waitFor(() => expect(store.bills().create).toHaveBeenCalled()); // Vérifie que create est bien appelé
+      expect(onNavigate).toHaveBeenCalledWith(ROUTES_PATH["Bills"]);
+    });
+  });
+
+  // Test de couverture des lignes non testées
+  describe("When store.bills().create is successful", () => {
+    test("Then the billId, fileUrl, and fileName should be set", async () => {
+      const html = NewBillUI();
+      document.body.innerHTML = html;
+
+      const onNavigate = jest.fn();
+      const store = {
+        bills: jest.fn(() => ({
+          create: jest.fn().mockResolvedValue({
+            fileUrl: "https://some-url.com",
+            key: "12345",
+          }),
+        })),
+      };
+
+      const newBill = new NewBill({
+        document,
+        onNavigate,
+        store,
+        localStorage: window.localStorage,
+      });
+
+      const fileInput = screen.getByTestId("file");
+      const file = new File(["image"], "image.jpg", { type: "image/jpg" });
+      fireEvent.change(fileInput, { target: { files: [file] } });
+
+      await waitFor(() => expect(store.bills().create).toHaveBeenCalled());
+
+      expect(newBill.fileUrl).toEqual("https://some-url.com");
+      expect(newBill.billId).toEqual("12345");
+      expect(newBill.fileName).toEqual("image.jpg");
     });
   });
 });

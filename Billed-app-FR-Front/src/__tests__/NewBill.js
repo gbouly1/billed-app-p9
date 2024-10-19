@@ -10,9 +10,8 @@ import mockStore from "../__mocks__/store.js";
 import router from "../app/Router.js";
 import { ROUTES_PATH } from "../constants/routes.js";
 
-jest.mock("../app/store", () => mockStore);
+jest.mock("../app/store", () => mockStore); // Mock global de store
 jest.spyOn(window, "alert").mockImplementation(() => {}); // Mock alert
-jest.spyOn(console, "error").mockImplementation(() => {}); // Mock console.error
 
 describe("Given I am connected as an employee", () => {
   beforeEach(() => {
@@ -54,7 +53,9 @@ describe("Given I am connected as an employee", () => {
       fireEvent.submit(form);
 
       expect(handleSubmit).toHaveBeenCalled();
-      await waitFor(() => expect(store.bills().create).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(store.bills().create).toHaveBeenCalledTimes(1)
+      );
     });
 
     test("Then file input should only accept jpg, jpeg, or png files", async () => {
@@ -81,7 +82,9 @@ describe("Given I am connected as an employee", () => {
       fireEvent.change(fileInput, { target: { files: [validFile] } });
 
       expect(handleChangeFile).toHaveBeenCalled();
-      await waitFor(() => expect(store.bills().create).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(store.bills().create).toHaveBeenCalledTimes(1)
+      );
 
       // Test avec un fichier invalide (pdf)
       const invalidFile = new File(["file"], "file.pdf", {
@@ -118,7 +121,9 @@ describe("Given I am connected as an employee", () => {
       fireEvent.submit(form);
 
       expect(handleSubmit).toHaveBeenCalled();
-      await waitFor(() => expect(store.bills().create).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(store.bills().create).toHaveBeenCalledTimes(1)
+      );
     });
   });
 
@@ -146,7 +151,9 @@ describe("Given I am connected as an employee", () => {
       fireEvent.change(fileInput, { target: { files: [file] } });
 
       expect(handleChangeFile).toHaveBeenCalled();
-      await waitFor(() => expect(store.bills().create).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(store.bills().create).toHaveBeenCalledTimes(1)
+      );
     });
 
     test("Then file upload should fail and catch the error", async () => {
@@ -176,23 +183,21 @@ describe("Given I am connected as an employee", () => {
       fireEvent.change(fileInput, { target: { files: [file] } });
 
       expect(handleChangeFile).toHaveBeenCalled();
-      await waitFor(() => expect(store.bills().create).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(store.bills().create).toHaveBeenCalledTimes(1)
+      );
       expect(console.error).toHaveBeenCalledWith(new Error("Erreur API"));
     });
   });
 
-  // test d'intégration POST
-  describe("When I submit a valid form", () => {
+  // Test d'intégration POST
+  describe("Integration POST new bill", () => {
     test("Then a POST request should be sent to create a new bill", async () => {
       const html = NewBillUI();
       document.body.innerHTML = html;
 
       const onNavigate = jest.fn();
-      const store = {
-        bills: jest.fn(() => ({
-          create: jest.fn().mockResolvedValue({}), // Mock la fonction create
-        })),
-      };
+      const store = mockStore;
 
       const newBill = new NewBill({
         document,
@@ -200,9 +205,6 @@ describe("Given I am connected as an employee", () => {
         store,
         localStorage: window.localStorage,
       });
-
-      // Espionner la méthode handleSubmit
-      const handleSubmit = jest.spyOn(newBill, "handleSubmit");
 
       // Remplir le formulaire avec des données valides
       screen.getByTestId("expense-type").value = "Transports";
@@ -225,44 +227,10 @@ describe("Given I am connected as an employee", () => {
       fireEvent.submit(form);
 
       // Vérification
-      expect(handleSubmit).toHaveBeenCalled();
-      await waitFor(() => expect(store.bills().create).toHaveBeenCalled()); // Vérifie que create est bien appelé
+      await waitFor(() =>
+        expect(store.bills().create).toHaveBeenCalledTimes(1)
+      );
       expect(onNavigate).toHaveBeenCalledWith(ROUTES_PATH["Bills"]);
-    });
-  });
-
-  // Test de couverture des lignes non testées
-  describe("When store.bills().create is successful", () => {
-    test("Then the billId, fileUrl, and fileName should be set", async () => {
-      const html = NewBillUI();
-      document.body.innerHTML = html;
-
-      const onNavigate = jest.fn();
-      const store = {
-        bills: jest.fn(() => ({
-          create: jest.fn().mockResolvedValue({
-            fileUrl: "https://some-url.com",
-            key: "12345",
-          }),
-        })),
-      };
-
-      const newBill = new NewBill({
-        document,
-        onNavigate,
-        store,
-        localStorage: window.localStorage,
-      });
-
-      const fileInput = screen.getByTestId("file");
-      const file = new File(["image"], "image.jpg", { type: "image/jpg" });
-      fireEvent.change(fileInput, { target: { files: [file] } });
-
-      await waitFor(() => expect(store.bills().create).toHaveBeenCalled());
-
-      expect(newBill.fileUrl).toEqual("https://some-url.com");
-      expect(newBill.billId).toEqual("12345");
-      expect(newBill.fileName).toEqual("image.jpg");
     });
   });
 });

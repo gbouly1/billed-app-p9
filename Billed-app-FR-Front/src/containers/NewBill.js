@@ -19,23 +19,31 @@ export default class NewBill {
   }
   handleChangeFile = (e) => {
     e.preventDefault();
+
     const file = this.document.querySelector(`input[data-testid="file"]`)
       .files[0];
-    const filePath = e.target.value.split(/\\/g);
-    const fileName = filePath[filePath.length - 1];
-    const formData = new FormData();
-    const email = JSON.parse(localStorage.getItem("user")).email;
+    const fileName = file.name;
+    const filePath = fileName.split(".");
+    const fileExtension = filePath[filePath.length - 1].toLowerCase();
 
-    // Valider l'extension du fichier
-    const fileExtension = fileName.split(".").pop().toLowerCase();
-    const validExtension = ["jpg", "jpeg", "png"];
-
-    if (!validExtension.includes(fileExtension)) {
-      alert("Veuillez sélectionner un fichier au format jpg, jpeg ou png");
-      return;
+    if (
+      fileExtension === "jpg" ||
+      fileExtension === "jpeg" ||
+      fileExtension === "png"
+    ) {
+      console.log("accepté");
+    } else {
+      console.log("refusé");
+      alert("fichier non accepté");
+      return; // Arrêtez le traitement car le fichier n'est pas autorisé
     }
 
+    // Reste du traitement du fichier...
+
+    const formData = new FormData();
+    const email = JSON.parse(localStorage.getItem("user")).email;
     formData.append("file", file);
+
     formData.append("email", email);
 
     this.store
@@ -50,9 +58,10 @@ export default class NewBill {
         console.log(fileUrl);
         this.billId = key;
         this.fileUrl = fileUrl;
+
         this.fileName = fileName;
-      })
-      .catch((error) => console.error(error));
+      });
+    // .catch(error => console.error(error))
   };
   handleSubmit = (e) => {
     e.preventDefault();
@@ -65,6 +74,7 @@ export default class NewBill {
       email,
       type: e.target.querySelector(`select[data-testid="expense-type"]`).value,
       name: e.target.querySelector(`input[data-testid="expense-name"]`).value,
+
       amount: parseInt(
         e.target.querySelector(`input[data-testid="amount"]`).value
       ),
@@ -91,8 +101,8 @@ export default class NewBill {
         .update({ data: JSON.stringify(bill), selector: this.billId })
         .then(() => {
           this.onNavigate(ROUTES_PATH["Bills"]);
-        })
-        .catch((error) => console.error(error));
+        });
+      // .catch(error => console.error(error))
     }
   };
 }
